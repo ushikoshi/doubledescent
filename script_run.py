@@ -81,10 +81,11 @@ def model_to_dict(raw_data):
         for key in keys_to_remove:
             del model[key]
 
-    for model in models_dict:
-        model['n_features'] = model.pop('n_states')
-        model['burnout_train'] = model.pop('burnout_train')
+    for i, model in enumerate(models_dict):
+        model['n_features'] = int(model.pop('n_states'))
+        model['burnout_train'] = int(model.pop('burnout_train'))
         model['w_xy'] = model['w_xy'].tolist()
+        models_dict[i] = model
 
     models_json = [json.dumps(model) for model in models_dict]
 
