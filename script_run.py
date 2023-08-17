@@ -73,14 +73,18 @@ def list_to_dict(hp_lists):
 
 
 def model_to_dict(raw_data):
-    keys_to_remove = ['nys', 'nus']
+    keys_to_remove = ['prepared_nys', 'prepared_nus', 'n_eff_inputs', 'order', 'rng', 'w_zx', 'w_xx',
+                      'activation', 'y_sim_train']
     models_dict = raw_data['model'].copy()
     models_dict = [model.__dict__ for model in models_dict]
+    for model in models_dict:
+        for key in keys_to_remove:
+            del model[key]
 
     for model in models_dict:
-        model['n_features'] = model.pop('n_features')
+        model['n_features'] = model.pop('n_states')
         model['burnout_train'] = model.pop('burnout_train')
-        model['w_xy'] = model['w_xy']
+        model['w_xy'] = model['w_xy'].tolist()
 
     models_json = [json.dumps(model) for model in models_dict]
 
@@ -97,15 +101,6 @@ if __name__ == '__main__':
 
     # Generate logarithmically spaced values
     n_features_grid = np.logspace(np.log10(start_value), np.log10(end_value), num=num_points, dtype=int)
-
-    # # defining the n_features grid
-    # features_aux = [int(round(i)) for i in np.geomspace(1, 100000, 199)]
-    # features_aux.append(955)
-    # aux = []
-    # for x in features_aux:
-    #     if 50 <= x <= 4000:
-    #         aux.append(x)
-    # n_features_grid = list(set(aux))
     n_features_grid.sort()
 
     # defining other hyperparameters grid
