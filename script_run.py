@@ -40,7 +40,7 @@ def run_mc_worker(args):
     # model testing for each seed
     y_sim_test = mdl.simulate(u_test, y_test, burnout=burnout_simulate, output_burnout=False, one_step_ahead=osa)
     # appending model object
-    row.append(mdl)
+    row.append(model_to_json(mdl))
     # appending training metrics
     row.append(
         mape(y_train[mdl.order + mdl.burnout_train:, ...], mdl.y_sim_train))
@@ -71,9 +71,8 @@ def run_mc_parallel(hyperparameters, u_train, y_train, u_test, y_test, burnout_t
     # Convert the list of results to a DataFrame
     df = pd.DataFrame(results, columns=['n_features', 'spectral_radius', 'leaky_factor', 'ridge', 'input_scale', 'density', 'seed', 'burnout_train', 'burnout_simulate',
                                'state_transform', 'model', 'mape_train', 'mse_train', 'mape_test', 'mse_test'])
-    df_complete = model_to_dict(df)
 
-    return df_complete
+    return df
 
 
 def run_mc(hyperparameters, u_train, y_train, u_test, y_test, burnout_train, burnout_simulate, osa=False, state_transform='quadratic'):
@@ -88,7 +87,7 @@ def run_mc(hyperparameters, u_train, y_train, u_test, y_test, burnout_train, bur
         # model testing for each seed
         y_sim_test = mdl.simulate(u_test, y_test, burnout=burnout_simulate, output_burnout=False, one_step_ahead=osa)
         # appending model object
-        row.append(mdl)
+        row.append(model_to_json(mdl))
         # appending training metrics
         row.append(
             mape(y_train[mdl.order + mdl.burnout_train:, ...], mdl.y_sim_train))
@@ -105,9 +104,7 @@ def run_mc(hyperparameters, u_train, y_train, u_test, y_test, burnout_train, bur
         df.loc[len(df)] = row
         df.loc[len(df)-1, 'seed'] = mdl.random_state
 
-    df_complete = model_to_dict(df)
-
-    return df_complete
+    return df
 
 
 def list_to_dict(hp_lists):
@@ -115,7 +112,7 @@ def list_to_dict(hp_lists):
     return hp_dicts
 
 
-def model_to_dict(raw_data):
+def models_to_jsons(raw_data):
     keys_to_remove = ['prepared_nys', 'prepared_nus', 'n_eff_inputs', 'order', 'rng', 'w_zx', 'w_xx',
                       'activation', 'y_sim_train']
     models_dict = raw_data['model'].copy()
@@ -134,6 +131,21 @@ def model_to_dict(raw_data):
 
     raw_data['model'] = models_json
     return raw_data
+
+
+def model_to_json(model):
+    keys_to_remove = ['prepared_nys', 'prepared_nus', 'n_eff_inputs', 'order', 'rng', 'w_zx', 'w_xx',
+                      'activation', 'y_sim_train']
+    
+    model_dict = model.__dict__.copy()
+    for key in keys_to_remove:
+        model_dict.pop(key, None)
+
+    model_dict['n_features'] = int(model_dict.pop('n_states', 0))
+    model_dict['burnout_train'] = int(model_dict.pop('burnout_train', 0))
+    model_dict['w_xy'] = model_dict.get('w_xy', []).tolist()
+
+    return json.dumps(model_dict)
 
 
 if __name__ == '__main__':
