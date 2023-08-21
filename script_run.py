@@ -5,11 +5,12 @@ from itertools import product
 from tqdm import tqdm
 import json
 import matplotlib.pyplot as plt
+from multiprocessing import Pool, cpu_count
+import datetime
 plt.style.use('mystyle.sty')
 
 
 def train_model(hp, u_train, y_train, burnout_train, state_transform='quadratic'):
-
     mdl = ESN(nus=[[1]], nys=[[1]], n_features=hp['n_features'], burnout_train=burnout_train,
               input_scale=hp['input_scale'], density=hp['density'],
               spectral_radius=hp['spectral_radius'], state_transform=state_transform,
@@ -31,8 +32,51 @@ def mse(y_true, y_pred):
     return np.mean((y_true[-n:, ...] - y_pred) ** 2)
 
 
-def run_mc(hyperparameters, u_train, y_train, u_test, y_test, burnout_train, burnout_simulate, osa=False, state_transform='quadratic'):
+def run_mc_worker(args):
+    hp, u_train, y_train, u_test, y_test, burnout_train, burnout_simulate, osa, state_transform = args
+    row = list(hp.values())
+    # model training for each seed
+    mdl = train_model(hp, u_train=u_train, y_train=y_train, state_transform=state_transform, burnout_train=burnout_train)
+    # model testing for each seed
+    y_sim_test = mdl.simulate(u_test, y_test, burnout=burnout_simulate, output_burnout=False, one_step_ahead=osa)
+    # appending model object
+    row.append(mdl)
+    # appending training metrics
+    row.append(
+        mape(y_train[mdl.order + mdl.burnout_train:, ...], mdl.y_sim_train))
+    row.append(
+        mse(y_train[mdl.order + mdl.burnout_train:, ...], mdl.y_sim_train))
+    # appending testing metrics
+    if osa:
+        y_test_new = y_test[mdl.burnout_train:-1, ...]
+    else:
+        y_test_new = y_test[mdl.burnout_train:, ...]
+    row.append(mape(y_test_new, y_sim_test))
+    row.append(mse(y_test_new, y_sim_test))
+    row[6] = mdl.random_state
+
+    return row
+
+
+def run_mc_parallel(hyperparameters, u_train, y_train, u_test, y_test, burnout_train, burnout_simulate, osa=False, state_transform='quadratic'):
+    num_processes = cpu_count()-1  # Number of available CPU cores
+    pool = Pool(processes=num_processes)
     
+    args_list = [(hp, u_train, y_train, u_test, y_test, burnout_train, burnout_simulate, osa, state_transform) for hp in hyperparameters]
+    
+    results = list(tqdm(pool.imap(run_mc_worker, args_list), total=len(args_list), desc="Processing"))
+    pool.close()
+    pool.join()
+    
+    # Convert the list of results to a DataFrame
+    df = pd.DataFrame(results, columns=['n_features', 'spectral_radius', 'leaky_factor', 'ridge', 'input_scale', 'density', 'seed', 'burnout_train', 'burnout_simulate',
+                               'state_transform', 'model', 'mape_train', 'mse_train', 'mape_test', 'mse_test'])
+    df_complete = model_to_dict(df)
+
+    return df_complete
+
+
+def run_mc(hyperparameters, u_train, y_train, u_test, y_test, burnout_train, burnout_simulate, osa=False, state_transform='quadratic'):
     df = pd.DataFrame(columns=['n_features', 'spectral_radius', 'leaky_factor', 'ridge', 'input_scale', 'density', 'seed', 'burnout_train', 'burnout_simulate',
                                'state_transform', 'model', 'mape_train', 'mse_train', 'mape_test', 'mse_test'])
 
@@ -67,7 +111,6 @@ def run_mc(hyperparameters, u_train, y_train, u_test, y_test, burnout_train, bur
 
 
 def list_to_dict(hp_lists):
-    
     hp_dicts = [dict(hp) for hp in hp_lists]
     return hp_dicts
 
@@ -142,9 +185,11 @@ if __name__ == '__main__':
     y_test = y_train_complete[955:, ...]  # taking the second half as the testing series
     u_test = u_train_complete[955:, ...]  # taking the second half as the testing series
 
-    results_df = run_mc(hyperparameters=hp_dicts, u_train=u_train, y_train=y_train, u_test=u_test, y_test=y_test,
+    results_df = run_mc_parallel(hyperparameters=hp_dicts, u_train=u_train, y_train=y_train, u_test=u_test, y_test=y_test,
                                  burnout_train=burnout_train, burnout_simulate=burnout_simulate, osa=False, state_transform='quadratic')
     
-    results_df.to_parquet('results_df.parquet')
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f'results_df_{timestamp}.parquet'
+    results_df.to_parquet(file_name)
 
     print('Debug')
