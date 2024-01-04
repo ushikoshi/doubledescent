@@ -6,6 +6,7 @@ import numpy as np
 import json
 from reservoir.model import ESN
 from tqdm import tqdm
+plt.style.use('mystyle.sty')
 
 
 class ScalarFormatterClass(ScalarFormatter):
@@ -50,7 +51,7 @@ def simulate_model(raw_data, choice, u, y):
 
 
 # retrieving results dataframe
-raw_data = pd.read_parquet('results_df.parquet')
+raw_data = pd.read_parquet('results_df_jul.parquet')
 
 # computing period used for Poincare section sampling
 dt_original = np.pi / 600
@@ -61,7 +62,7 @@ poincare_period = int(2 * np.pi / dt_decimated)
 # plotting the Poincare section for a few choices of model
 over = raw_data[raw_data['n_features'] > 955]
 # over['n_features'].loc[over['mse_test'].nsmallest(50).index.tolist()]
-choices = [297, 2544]  # [5826, 6238, 7490, 6959, 6079]  # [6785, 5404, 5981, 6110, 6315, 6791]
+choices = [2544, 5981]  # [5826, 6238, 7490, 6959, 6079]  # [6785, 5404, 5981, 6110, 6315, 6791]
 # choices = over['mse_test'].nsmallest(100).index.tolist()[8:]
 for choice in tqdm(choices, desc='Processing'):
     y_validation = np.load('y_test_validation_5000.npy')[-840000:, ...]

@@ -152,7 +152,7 @@ if __name__ == '__main__':
 
     # Define the range and number of points
     start_value = 75
-    end_value = 75500
+    end_value = 7550
     num_points = 50
 
     # Generate logarithmically spaced values
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     n_features_grid.sort()
 
     # defining other hyperparameters grid
-    ridge_grid = [1e-5, 1e-7, 1e-10, 1e-12]
+    ridge_grid = [1e-6, 1e-7, 1e-9, 1e-11]
     spectral_radius_grid = [0.1]
     input_scale_grid = [0.1]
     leaky_factor_grid = [0.3]

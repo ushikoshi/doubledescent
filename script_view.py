@@ -28,7 +28,7 @@ def plot_errorbar(ax, x, y, lerr, uerr, color, lbl=''):
 
 
 # retrieving results dataframe
-raw_data = pd.read_parquet('results_df_old.parquet')
+raw_data = pd.read_parquet('results_df_jul.parquet')
 
 # plotting using Antonio's code
 # plt.style.use('mystyle.mplsty')
@@ -36,7 +36,7 @@ print("\n\nPlotting double descent curve with boxplots...\n")
 plt.close('all')
 fig, ax = plt.subplots(figsize=(19, 9))
 ridge_grid = [1e-5, 1e-7]
-colors = ['red', 'blue', 'green']
+colors = ['red', 'blue']
 for i, ridge in enumerate(ridge_grid):
     df = raw_data[raw_data['ridge'] == ridge].copy().reset_index(drop=True)
     df['proportion'] = df['n_features']/755
@@ -49,7 +49,7 @@ for i, ridge in enumerate(ridge_grid):
     ax.set_ylabel('MSE')
     plt.legend()
 plt.tight_layout()
-plt.savefig('mse_curve_duffing_stairs.pdf')
+plt.savefig('teste.pdf')
 # plt.show()
 
 print('Breakpoint')
